@@ -1,41 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pre‑Survey — Hybrid (Mock + Live)</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <style>
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f7f7f8}
-    #app{display:grid;grid-template-columns:1.6fr 1fr;grid-template-rows:auto 1fr;height:100vh}
-    #toolbar{grid-column:1/3;display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid #e5e7eb;align-items:center;background:#fff}
-    #map{grid-column:1/2;grid-row:2/3}
-    #panel{grid-column:2/3;grid-row:2/3;padding:12px;overflow:auto;border-left:1px solid #e5e7eb;background:#fafafa}
-    .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .kpi{flex:1;min-width:140px;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
-    .kpi b{display:block;font-size:12px;opacity:.7}
-    .kpi span{font-size:20px}
-    .chips{display:flex;gap:6px;flex-wrap:wrap}
-    .chip{padding:6px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#f1f5f9;font-size:12px}
-    .chip.warn{background:#fff7ed;border-color:#fed7aa}
-    .form{display:grid;grid-template-columns:1fr;gap:8px}
-    input,select,button{padding:8px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer}
-    img{max-width:100%;border-radius:10px;border:1px solid #e5e7eb}
-    .small{font-size:12px;opacity:.8}
-    .error{background:#fff5f5;border:1px solid #fecaca;color:#991b1b;padding:8px;border-radius:8px;margin:8px 0;display:none}
-    @media print{
-      #map{height:300px}
-      .no-print{display:none}
-      body{background:#fff}
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pre-Survey — Hybrid (Mock + Live)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f7f7f8}
+  #app{display:grid;grid-template-columns:1.6fr 1fr;grid-template-rows:auto 1fr;height:100vh}
+  #toolbar{grid-column:1/3;display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid #e5e7eb;align-items:center;background:#fff}
+  #map{grid-column:1/2;grid-row:2/3}
+  #panel{grid-column:2/3;grid-row:2/3;padding:12px;overflow:auto;border-left:1px solid #e5e7eb;background:#fafafa}
+  .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .kpi{flex:1;min-width:140px;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
+  .kpi b{display:block;font-size:12px;opacity:.7}
+  .kpi span{font-size:20px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:6px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#f1f5f9;font-size:12px}
+  .chip.warn{background:#fff7ed;border-color:#fed7aa}
+  .form{display:grid;grid-template-columns:1fr;gap:8px}
+  input,select,button{padding:8px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer}
+  img{max-width:100%;border-radius:10px;border:1px solid #e5e7eb}
+  .small{font-size:12px;opacity:.8}
+  .error{background:#fff5f5;border:1px solid #fecaca;color:#991b1b;padding:8px;border-radius:8px;margin:8px 0;display:none}
+  .mode{display:flex;align-items:center;gap:8px}
+  .muted{opacity:.6}
+  @media print{ #map{height:300px}.no-print{display:none} body{background:#fff} }
+</style>
 </head>
 <body>
 <div id="app">
   <div id="toolbar">
-    <strong>Pre‑Survey (Hybrid)</strong>
-    <span style="opacity:.7">— mock now, live when keys are set</span>
+    <strong>Pre-Survey (Hybrid)</strong>
+    <span style="opacity:.7">— mock by default, live when toggled</span>
     <span style="flex:1"></span>
     <button class="no-print" id="pdfBtn" type="button">Download PDF</button>
   </div>
@@ -45,50 +43,64 @@
   <div id="panel">
     <div class="card">
       <div class="form">
-        <div class="row">
-          <div style="flex:1;min-width:220px">
-            <label>Depot (Mock)</label>
-            <select id="depot"></select>
-          </div>
-          <div style="flex:1;min-width:220px">
-            <label>Customer Address (Mock)</label>
-            <select id="customer"></select>
-          </div>
+        <div class="mode">
+          <input type="checkbox" id="liveToggle"/>
+          <label for="liveToggle"><b>Use live geocoding (Google key required)</b></label>
         </div>
-        <div class="row">
-          <div style="flex:1;min-width:220px">
-            <label>Depot (Free text, Live Geocoding)</label>
-            <input id="depotText" placeholder="e.g., 12 Patcham Terrace, SW8"/>
+
+        <!-- MOCK MODE -->
+        <div id="mockBlock">
+          <div class="row">
+            <div style="flex:1;min-width:220px">
+              <label>Depot (Mock)</label>
+              <select id="depot"></select>
+            </div>
+            <div style="flex:1;min-width:220px">
+              <label>Customer Address (Mock)</label>
+              <select id="customer"></select>
+            </div>
           </div>
-          <div style="flex:1;min-width:220px">
-            <label>Customer Address (Free text, Live Geocoding)</label>
-            <input id="custText" placeholder="e.g., 21 Soho Square, W1D 3QP"/>
-          </div>
+          <p class="small muted">Tip: This works instantly with the built-in sample data.</p>
         </div>
+
+        <!-- LIVE MODE -->
+        <div id="liveBlock" style="display:none">
+          <div class="row">
+            <div style="flex:1;min-width:220px">
+              <label>Depot (Free text)</label>
+              <input id="depotText" placeholder="e.g., 12 Patcham Terrace, SW8"/>
+            </div>
+            <div style="flex:1;min-width:220px">
+              <label>Customer Address (Free text)</label>
+              <input id="custText" placeholder="e.g., 21 Soho Square, W1D 3QP"/>
+            </div>
+          </div>
+          <p class="small muted">Requires <code>GOOGLE_API_KEY</code> in Vercel. Both fields must be filled.</p>
+        </div>
+
         <div id="err" class="error"></div>
         <button id="analyzeBtn" class="no-print" type="button">Analyse Address</button>
       </div>
     </div>
 
+    <!-- PROPERTY -->
     <div id="propertyCard" class="card" style="display:none">
       <h3>Property</h3>
       <div class="row">
-        <div style="flex:1;min-width:260px">
-          <img id="streetImg" alt="Street view"/>
-        </div>
-        <div style="flex:1;min-width:220px">
-          <img id="satImg" alt="Satellite" />
-        </div>
+        <div style="flex:1;min-width:260px"><img id="streetImg" alt="Street view"/></div>
+        <div style="flex:1;min-width:220px"><img id="satImg" alt="Satellite"/></div>
       </div>
       <div class="chips" id="propertyChips"></div>
     </div>
 
+    <!-- PARKING -->
     <div id="parkingCard" class="card" style="display:none">
       <h3>Parking & Kerbside</h3>
       <div class="chips" id="parkingChips"></div>
       <ul id="parkingNotes" class="small"></ul>
     </div>
 
+    <!-- BUILDING -->
     <div id="buildingCard" class="card" style="display:none">
       <h3>Building Metadata</h3>
       <div class="row">
@@ -100,11 +112,13 @@
       </div>
     </div>
 
+    <!-- SAFETY -->
     <div id="safetyCard" class="card" style="display:none">
       <h3>Safety / Risk</h3>
       <div class="chips" id="safetyChips"></div>
     </div>
 
+    <!-- WEATHER -->
     <div id="weatherCard" class="card" style="display:none">
       <h3>Weather</h3>
       <div class="row">
@@ -116,6 +130,7 @@
       <ul id="wImpact" class="small"></ul>
     </div>
 
+    <!-- ACCESS -->
     <div id="accessCard" class="card" style="display:none">
       <h3>Access & Recommendations</h3>
       <div class="chips" id="accessChips"></div>
@@ -126,6 +141,7 @@
       </div>
     </div>
 
+    <!-- ROUTE -->
     <div id="routeCard" class="card" style="display:none">
       <h3>Route</h3>
       <div class="row">
@@ -136,6 +152,7 @@
       <ul id="incidents"></ul>
     </div>
 
+    <!-- COMPLIANCE -->
     <div id="complianceCard" class="card" style="display:none">
       <h3>Compliance & Paperwork</h3>
       <div class="chips" id="complianceChips"></div>
@@ -166,20 +183,44 @@ async function loadSamples(){
   data.customers.forEach(c=>{const o=document.createElement('option'); o.value=c.id; o.textContent=c.label; custSel.appendChild(o);});
 }
 
+document.getElementById('liveToggle').addEventListener('change', (e)=>{
+  const live = e.target.checked;
+  document.getElementById('liveBlock').style.display = live ? 'block' : 'none';
+  document.getElementById('mockBlock').style.display = live ? 'none' : 'block';
+});
+
 async function analyse(){
   hideErr();
   try{
-    const depotId = document.getElementById('depot').value;
-    const custId  = document.getElementById('customer').value;
-    const depotText = document.getElementById('depotText').value.trim();
-    const custText  = document.getElementById('custText').value.trim();
+    const live = document.getElementById('liveToggle').checked;
 
-    let payload = {};
-    if(depotText && custText){ payload = { depot_address_text: depotText, customer_address_text: custText }; }
-    else { payload = { depot_id: depotId, customer_address_id: custId }; }
+    // payload selection is now explicit
+    let payload;
+    if(live){
+      const depotText = document.getElementById('depotText').value.trim();
+      const custText  = document.getElementById('custText').value.trim();
+      if(!depotText || !custText){
+        showErr('Enter BOTH free-text addresses in live mode.');
+        return;
+      }
+      payload = { depot_address_text: depotText, customer_address_text: custText };
+    }else{
+      const depotId = document.getElementById('depot').value;
+      const custId  = document.getElementById('customer').value;
+      if(!depotId || !custId){
+        showErr('Select BOTH depot and customer in mock mode.');
+        return;
+      }
+      payload = { depot_id: depotId, customer_address_id: custId };
+    }
 
-    const intake = await getJSON('/api/intake',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    if(intake.error){ showErr('Intake failed: '+(intake.hint||intake.error)); return; }
+    const intake = await getJSON('/api/intake',{
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    if(intake.error){
+      showErr('Intake failed: '+(intake.hint || intake.error));
+      return;
+    }
 
     if(originMarker) originMarker.remove(); if(destMarker) destMarker.remove(); if(routeLine) routeLine.remove();
     originMarker = L.marker([intake.origin.lat, intake.origin.lng]).addTo(map).bindPopup(intake.origin.label);
@@ -187,7 +228,7 @@ async function analyse(){
     const bounds = L.latLngBounds([ [intake.origin.lat, intake.origin.lng], [intake.dest.lat, intake.dest.lng] ]);
     map.fitBounds(bounds, {padding:[30,30]});
 
-    // property image
+    // Property image
     let pimg;
     if(intake.mode==='live_text'){ pimg = await getJSON(`/api/property-image?lat=${intake.dest.lat}&lng=${intake.dest.lng}`); }
     else { pimg = await getJSON('/api/property-image?address_id='+payload.customer_address_id); }
@@ -199,9 +240,9 @@ async function analyse(){
       document.getElementById('propertyCard').style.display='block';
     }
 
-    // layers (parking/building/safety/weather/access)
-    let addrId = payload.customer_address_id || 'cust_1'; // fallback
-    if(intake.mode==='live_text'){ addrId = 'cust_1'; } // demo layers for live text
+    // Use mock layers for demo (if live, map them to a representative mock id)
+    const addrId = (intake.mode==='live_text') ? 'cust_1' : payload.customer_address_id;
+
     const park = await getJSON('/api/parking?address_id='+addrId);
     const pchips = document.getElementById('parkingChips'); pchips.innerHTML='';
     if(park.cpz) pchips.appendChild(chip('CPZ: '+park.cpz, true));
@@ -230,10 +271,10 @@ async function analyse(){
     document.getElementById('safetyCard').style.display='block';
 
     const wx = await getJSON(`/api/weather?lat=${intake.dest.lat}&lng=${intake.dest.lng}`);
-    document.getElementById('wCond').textContent = wx.condition;
+    document.getElementById('wCond').textContent = wx.condition ?? '—';
     document.getElementById('wTemp').textContent = (wx.temp_c!=null?wx.temp_c+' °C':'—');
     document.getElementById('wWind').textContent = (wx.wind_kmh!=null?wx.wind_kmh+' km/h':'—');
-    document.getElementById('wPrecip').textContent = wx.precip_chance_pct+'%';
+    document.getElementById('wPrecip').textContent = (wx.precip_chance_pct!=null?wx.precip_chance_pct+'%':'—');
     const wimp=document.getElementById('wImpact'); wimp.innerHTML='';
     (wx.impact||[]).forEach(i=>{const li=document.createElement('li'); li.textContent=i; wimp.appendChild(li);});
     document.getElementById('weatherCard').style.display='block';
@@ -252,7 +293,7 @@ async function analyse(){
     document.getElementById('equipRec').textContent = (acc.equipment||[]).join(', ') || '—';
     document.getElementById('accessCard').style.display='block';
 
-    // route
+    // Route
     let route;
     if(intake.mode==='live_text'){
       route = await getJSON(`/api/route?origin_lat=${intake.origin.lat}&origin_lng=${intake.origin.lng}&dest_lat=${intake.dest.lat}&dest_lng=${intake.dest.lng}`);
@@ -272,7 +313,7 @@ async function analyse(){
       document.getElementById('routeCard').style.display='block';
     }
 
-    // compliance
+    // Compliance
     const comp = await getJSON('/api/compliance?address_id='+addrId);
     const cchips = document.getElementById('complianceChips'); cchips.innerHTML='';
     cchips.appendChild(chip(comp.waiver_required? 'Waiver: Required':'Waiver: Not Needed', comp.waiver_required));
@@ -283,7 +324,7 @@ async function analyse(){
 
   }catch(e){
     console.error(e);
-    showErr('Something went wrong: '+e.message);
+    showErr('Something went wrong: '+(e.message||e));
   }
 }
 
@@ -292,7 +333,7 @@ document.getElementById('pdfBtn').addEventListener('click', ()=>window.print());
 
 (async function init(){
   await loadSamples();
-  analyse();
+  analyse(); // default: mock mode auto-runs
 })();
 </script>
 </body>
