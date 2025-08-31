@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pre‑Survey Tool — Mock</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f7f7f8}
+    #app{display:grid;grid-template-columns:1.6fr 1fr;grid-template-rows:auto 1fr;height:100vh}
+    #toolbar{grid-column:1/3;display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid #e5e7eb;align-items:center;background:#fff}
+    #map{grid-column:1/2;grid-row:2/3}
+    #panel{grid-column:2/3;grid-row:2/3;padding:12px;overflow:auto;border-left:1px solid #e5e7eb;background:#fafafa}
+    .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .kpi{flex:1;min-width:140px;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
+    .kpi b{display:block;font-size:12px;opacity:.7}
+    .kpi span{font-size:20px}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{padding:6px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#f1f5f9;font-size:12px}
+    .chip.warn{background:#fff7ed;border-color:#fed7aa}
+    .form{display:grid;grid-template-columns:1fr;gap:8px}
+    select,button{padding:8px;border:1px solid #d1d5db;border-radius:8px;background:#fff}
+    img{max-width:100%;border-radius:10px;border:1px solid #e5e7eb}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <strong>Pre‑Survey Tool (Mock)</strong>
+    <span style="opacity:.7">— address → image • access • route (no external APIs)</span>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="panel">
+    <div class="card">
+      <div class="form">
+        <label>Depot</label>
+        <select id="depot"></select>
+        <label>Customer Address</label>
+        <select id="customer"></select>
+        <button id="analyzeBtn">Analyze Address</button>
+      </div>
+    </div>
+
+    <div id="propertyCard" class="card" style="display:none">
+      <h3>Property</h3>
+      <div class="row">
+        <div style="flex:1;min-width:260px">
+          <img id="streetImg" alt="Street view mock"/>
+        </div>
+        <div style="flex:1;min-width:220px">
+          <img id="satImg" alt="Satellite mock" />
+        </div>
+      </div>
+      <div class="chips" id="propertyChips"></div>
+    </div>
+
+    <div id="accessCard" class="card" style="display:none">
+      <h3>Access & Recommendations</h3>
+      <div class="chips" id="accessChips"></div>
+      <ul id="accessNotes"></ul>
+      <div class="row">
+        <div class="kpi"><b>Crew</b><span id="crewRec">—</span></div>
+        <div class="kpi"><b>Equipment</b><span id="equipRec">—</span></div>
+      </div>
+    </div>
+
+    <div id="routeCard" class="card" style="display:none">
+      <h3>Route (Simulated Live)</h3>
+      <div class="row">
+        <div class="kpi"><b>Distance</b><span id="dist">—</span></div>
+        <div class="kpi"><b>ETA</b><span id="eta">—</span></div>
+        <div class="kpi"><b>Leave By</b><span id="leaveBy">—</span></div>
+      </div>
+      <ul id="incidents"></ul>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map=L.map('map').setView([51.509,-0.118],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+let originMarker, destMarker, routeLine;
+
+async function getJSON(url, opts){ const r=await fetch(url, opts); if(!r.ok) throw new Error(r.status+' '+r.statusText); return r.json(); }
+
+async function loadSamples(){
+  const data = await getJSON('/api/sample_addresses');
+  const depotSel = document.getElementById('depot');
+  const custSel = document.getElementById('customer');
+  depotSel.innerHTML = ''; custSel.innerHTML='';
+  data.depots.forEach(d=>{const o=document.createElement('option'); o.value=d.id; o.textContent=d.label; depotSel.appendChild(o);});
+  data.customers.forEach(c=>{const o=document.createElement('option'); o.value=c.id; o.textContent=c.label; custSel.appendChild(o);});
+}
+
+function chip(text, warn=false){ const s=document.createElement('span'); s.className='chip'+(warn?' warn':''); s.textContent=text; return s; }
+
+async function analyze(){
+  const depot = document.getElementById('depot').value;
+  const cust  = document.getElementById('customer').value;
+  const intake = await getJSON('/api/intake',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({depot_id:depot, customer_address_id:cust})});
+
+  if(originMarker) originMarker.remove(); if(destMarker) destMarker.remove(); if(routeLine) routeLine.remove();
+  originMarker = L.marker([intake.origin.lat, intake.origin.lng]).addTo(map).bindPopup(intake.origin.label);
+  destMarker = L.marker([intake.dest.lat, intake.dest.lng]).addTo(map).bindPopup(intake.dest.label);
+
+  const bounds = L.latLngBounds([ [intake.origin.lat, intake.origin.lng], [intake.dest.lat, intake.dest.lng] ]);
+  map.fitBounds(bounds, {padding:[30,30]});
+
+  const pimg = await getJSON('/api/property-image?address_id='+cust);
+  document.getElementById('streetImg').src = pimg.image_url;
+  document.getElementById('satImg').src    = pimg.satellite_url;
+  const chips = document.getElementById('propertyChips'); chips.innerHTML='';
+  chips.appendChild(chip('Type: '+(pimg.type_guess||'unknown')));
+  document.getElementById('propertyCard').style.display='block';
+
+  const acc = await getJSON('/api/access-insights?address_id='+cust);
+  const ax = document.getElementById('accessChips'); ax.innerHTML='';
+  ax.appendChild(chip(acc.driveway? 'Driveway: Yes':'Driveway: No', !acc.driveway));
+  ax.appendChild(chip(acc.stairs_visible? 'Stairs visible':'No stairs', acc.stairs_visible));
+  ax.appendChild(chip(acc.double_yellow? 'Double yellow nearby':'No double yellow', acc.double_yellow));
+  if(acc.red_route) ax.appendChild(chip('Red route', true));
+  if(acc.narrow_road) ax.appendChild(chip('Narrow road', true));
+  if(acc.parking_zone) ax.appendChild(chip('Parking: '+acc.parking_zone, true));
+  const notes = document.getElementById('accessNotes'); notes.innerHTML='';
+  (acc.notes||[]).forEach(n=>{ const li=document.createElement('li'); li.textContent=n; notes.appendChild(li); });
+  document.getElementById('crewRec').textContent = acc.crew_recommendation || '—';
+  document.getElementById('equipRec').textContent = (acc.equipment||[]).join(', ') || '—';
+  document.getElementById('accessCard').style.display='block';
+
+  const route = await getJSON(`/api/route?origin_id=${depot}&dest_id=${cust}&depart_at=now`);
+  document.getElementById('dist').textContent = route.distance_km + ' km';
+  document.getElementById('eta').textContent  = route.eta_minutes + ' min';
+  document.getElementById('leaveBy').textContent = route.leave_by;
+  const inc = document.getElementById('incidents'); inc.innerHTML='';
+  (route.incidents||[]).forEach(i=>{ const li=document.createElement('li'); li.textContent=i; inc.appendChild(li); });
+  if(route.polyline && route.polyline.type==='LineString'){
+    routeLine = L.polyline(route.polyline.coordinates.map(([lng,lat])=>[lat,lng]), {weight:4, opacity:0.7}).addTo(map);
+  }
+  document.getElementById('routeCard').style.display='block';
+}
+
+document.getElementById('analyzeBtn').onclick = analyze;
+
+(async function init(){
+  await loadSamples();
+  analyze();
+})();
+</script>
+</body>
+</html>
